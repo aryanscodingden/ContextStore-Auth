@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ContextStore - Authentication</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .container {
+      background: white;
+      padding: 48px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      text-align: center;
+      max-width: 400px;
+    }
+    .success-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      color: #1a202c;
+      margin: 0 0 8px 0;
+    }
+    p {
+      color: #718096;
+      margin: 0 0 24px 0;
+    }
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">🎉</div>
+    <h1>Authentication Successful!</h1>
+    <p>Logging you into ContextStore...</p>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const EXTENSION_ID = 'iffacdedclcoldaodioimolkhincnipk'; // Your extension ID
+    const statusDiv = document.getElementById('status');
+
+    function showStatus(message, isError = false) {
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${isError ? 'error' : 'success'}`;
+    }
+
+    async function handleAuth() {
+      try {
+        // Extract tokens from URL hash
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const expiresIn = hashParams.get('expires_in');
+
+        if (!accessToken || !refreshToken) {
+          throw new Error('Missing authentication tokens');
+        }
+
+        // Send tokens to extension
+        chrome.runtime.sendMessage(
+          EXTENSION_ID,
+          {
+            type: 'SUPABASE_AUTH',
+            accessToken,
+            refreshToken,
+            expiresIn
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              showStatus('Extension not installed or unavailable. Please install ContextStore extension.', true);
+              return;
+            }
+            
+            if (response && response.success) {
+              showStatus('Successfully logged in! You can close this tab and open the extension.');
+              setTimeout(() => window.close(), 2000);
+            } else {
+              showStatus('Failed to communicate with extension', true);
+            }
+          }
+        );
+      } catch (error) {
+        showStatus(`Error: ${error.message}`, true);
+      }
+    }
+
+    // Run auth handler when page loads
+    handleAuth();
+  </script>
+</body>
+</html>
